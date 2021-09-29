@@ -21,7 +21,7 @@ app.get("/urls", (req, res) => {
   res.render("url_index", templateVars);
 });
 
-
+//test page displaying hello
 app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
@@ -29,4 +29,12 @@ app.get("/hello", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = { shortURL: req.params.shortURL, longURL:req.params.longURL };
   res.render("urls_show", templateVars);
+});
+
+app.post("/urls/:shortURL/delete", (req, res) => {
+  //const templateVars = { shortURL: req.params.shortURL, longURL:req.params.longURL };
+  const urlToDelete = req.params.shortURL;
+  console.log(urlToDelete)
+  delete urlDatabase[urlToDelete];
+  res.redirect("/urls");
 });
