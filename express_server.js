@@ -1,4 +1,5 @@
 const express = require("express");
+const bcrypt = require('bcryptjs');
 const app = express();
 const PORT = 8080; // default port 8080
 app.set("view engine", "ejs");
@@ -6,7 +7,7 @@ const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({ extended: true }));
 var cookieParser = require('cookie-parser');
 app.use(cookieParser());
-//app.use(express.json())
+
 
 const random = function(){
   var id = "id" + Math.random().toString(16).slice(2);
@@ -68,6 +69,8 @@ app.get("/urls", (req, res) => {
   res.render('url_index', templateVars);
 
 });
+
+
 app.get('/login', (req, res) => {
 
   const templateVars = {user: null};
