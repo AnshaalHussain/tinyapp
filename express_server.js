@@ -7,6 +7,12 @@ const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({ extended: true }));
 var cookieParser = require('cookie-parser');
 app.use(cookieParser());
+const cookieSession = require('cookie-session')
+app.use(cookieSession({
+  name: 'session',
+  keys: ['tehsecretkey'],
+}))
+//const findUserByEmail = require('./helpers')
 
 
 const random = function(){
@@ -24,7 +30,7 @@ const urlDatabase = {
 
 const usersDb = {};
 
-// HELPER FUNCTION: check if user already exists in usersDB
+ //HELPER FUNCTION: check if user already exists in usersDB
 const findUserByEmail = function(email, users) {
   for(let userId in users) {
     const user = users[userId];
@@ -35,11 +41,13 @@ const findUserByEmail = function(email, users) {
   return false;
 }
 
+
 // HELPER FUNCTION: authenticates users - takes in usersDb as parameter
 const authenticateUser = function(email, password, usersDb) {
   // retrieve the user from the db (using helper function)
   const userFound = findUserByEmail(email, usersDb);
-  if (userFound && userFound.password === password){
+  
+  if (userFound && bcrypt.compareSync(password, userFound.password)){
     return userFound;
   }
 
@@ -57,7 +65,8 @@ app.get("/", (req, res) => {
 
 app.get("/urls", (req, res) => {
   // retrieve the user info -> cookies to retrieve the user id
-  const userId = req.cookies['user_id'];
+  //const userId = req.cookies['user_id'];
+  const userId = req.session.user_id;
 
   // retrieving the user object from userDb
   const loggedInUser = usersDb[userId];
@@ -95,24 +104,29 @@ app.post('/login', (req, res) => {
   if (user){ // if this happens (true), then user is authenticated
 
     // setting the cookie
-    res.cookie('user_id', userFound.id);
+    //res.cookie('user_id', userFound.id);
+    req.session.user_id = userFound.id;
 
     // redirect to /urls
     res.redirect('/urls') // hey browser, can you do another request => get /urls
     return;
-  }
-
-  // else (false) the user is not authenticated => send error
+  } 
+    // else (false) the user is not authenticated => send error
   
   res.status(401).send('Wrong credentials');
+  return;
+  
+
+  
   
   // retrieve the user info -> cookies to retrieve the user id
-  const userId = req.cookies['user_id'];
+  //const userId = req.cookies['user_id'];
+  const userId = req.session.user_id;
 
   // retrieving the user object from userDb
   const loggedInUser = usersDb[userId];
 
-  res.redirect('/urls')
+  //res.redirect('/urls')
 
 });
 
@@ -125,14 +139,16 @@ app.get('/logout', (req, res) => {
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie('user_id')
+  //res.clearCookie('user_id')
+  req.session = null;
   res.redirect("/urls")
 });
 
 
 app.get("/urls/:shortURL", (req, res) => {
 
-  const userId = req.cookies['user_id'];
+  //const userId = req.cookies['user_id'];
+  const userId = req.session.user_id;
 
   const loggedInUser = usersDb[userId];
   const templateVars = {    
@@ -165,6 +181,7 @@ app.post("/register", (req, res) => {
 
   const email = req.body.email;
   const password = req.body.password;
+  const hashedPassword = bcrypt.hashSync(password, 10);
 
   // userFound can be user object or false:
   const userFound = findUserByEmail(email, usersDb);
@@ -181,11 +198,12 @@ app.post("/register", (req, res) => {
     usersDb[userId] = {
       id: userId,
       email: email,
-      password: password,
+      password: hashedPassword,
     }
 
   // log the user --> ask browser to set a cookier with user id
-  res.cookie("user_id", userId);
+  //res.cookie("user_id", userId);
+  req.session.user_id = userId;
 
   // redirect to /urls
   res.redirect("/urls");
