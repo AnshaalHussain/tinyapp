@@ -28,22 +28,28 @@ function generateRandomString() {
 
 function urlsForUser(id) {
   const uniqueURLS = {};
-  for (obj in urlDatabase){
-    if (urlDatabase[obj]["userId"] === id) {
+  for (obj in urlDatabase) {
+    if (urlDatabase[obj] && urlDatabase[obj]["userId"] === id) {
       uniqueURLS[obj] = urlDatabase[obj];
+    } else if (urlDatabase[obj]) {
+      return "URL not found in ID";
+    } else {
+      return null;
     }
   }
+  console.log(uniqueURLS)
   return uniqueURLS;
+
 };
 
 
 
 
 //HELPER FUNCTION: check if user already exists in usersDB
-const findUserByEmail = function(email, users) {
-  for(let userId in users) {
+const findUserByEmail = function (email, users) {
+  for (let userId in users) {
     const user = users[userId];
-    if(email === user.email) {
+    if (email === user.email) {
       return user;
     }
   }
@@ -52,11 +58,11 @@ const findUserByEmail = function(email, users) {
 
 
 // HELPER FUNCTION: authenticates users - takes in usersDb as parameter
-const authenticateUser = function(email, password, usersDb) {
+const authenticateUser = function (email, password, usersDb) {
   // retrieve the user from the db (using helper function)
   const userFound = findUserByEmail(email, usersDb);
-  
-  if (userFound && bcrypt.compareSync(password, userFound.password)){
+
+  if (userFound && bcrypt.compareSync(password, userFound.password)) {
     return userFound;
   }
 
@@ -81,7 +87,12 @@ app.get("/urls", (req, res) => {
   const userId = req.session.user_id;
   // retrieving the user object from userDb
   const loggedInUser = usersDb[userId];
-  const personalURLDatabase = urlsForUser(userId)
+  let personalURLDatabase = urlsForUser(userId)
+
+  if(personalURLDatabase === "URL not found in ID") {
+    personalURLDatabase = {};
+  }
+
   const templateVars = {
     user: loggedInUser,
     urls: personalURLDatabase,
@@ -92,9 +103,9 @@ app.get("/urls", (req, res) => {
   } else {
     res.redirect("/login")
   }
-  
-});
 
+});
+/*
 app.post("/urls", (req, res) => {
 
   const userId = req.session.user_id;
@@ -106,10 +117,24 @@ app.post("/urls", (req, res) => {
 
   //console.log("HELLO", longURL, shortURL);  // Log the POST request body to the console
 
+  const shortURL = req.params.shortURL;
+
+  if(urlDatabase[shortURL]) {
+    const templateVars = {    
+    shortURL,
+    longURL: urlDatabase[shortURL]["longURL"],
+    user: loggedInUser,
+    urls: urlDatabase,
+    };
+
   //res.redirect(`/urls/${shortURL}`)
-
-});
-
+  if (templateVars.user) {
+    res.render("url_show", templateVars);
+  } else {
+    res.redirect("/login")
+  }
+};
+*/
 app.get("/urls/new", (req, res) => {
   const userId = req.session.user_id;
   const loggedInUser = usersDb[userId];
@@ -123,20 +148,22 @@ app.get("/urls/new", (req, res) => {
   } else {
     res.redirect("/login")
   }
- 
+
 });
 
-app.post("/urls/new", (req, res) => {
+app.post("/urls", (req, res) => {
 
   const longURL = req.body.longURL;
   const shortURL = generateRandomString();
   const userId = req.session.user_id;
 
+  //console.log(req.body)
 
-  urlDatabase[shortURL] = {}
-  urlDatabase[shortURL]["longURL"] = longURL;
-  urlDatabase[shortURL]["userId"] = userId;
-  urlsForUser();
+  urlDatabase[shortURL] = {
+    longURL,
+    userId
+  }
+
   res.redirect("/urls")
 
 });
@@ -158,7 +185,7 @@ app.post('/login', (req, res) => {
   //extract email and pass from body of request => req.body
   const email = req.body.email;
   const password = req.body.password;
-  
+
   // retrieve the user from the db (using helper function)
   const userFound = findUserByEmail(email, usersDb);
   // compare the passwords
@@ -167,26 +194,26 @@ app.post('/login', (req, res) => {
 
   const user = authenticateUser(email, password, usersDb);
 
-    if (user){ // if this happens (true), then user is authenticated
+  if (user) { // if this happens (true), then user is authenticated
 
-      // setting the cookie
-      //res.cookie('user_id', userFound.id);
-      req.session.user_id = userFound.id;
+    // setting the cookie
+    //res.cookie('user_id', userFound.id);
+    req.session.user_id = userFound.id;
 
-      // redirect to /urls
-      res.redirect('/urls') // hey browser, can you do another request => get /urls
-      return;
-    } 
-      // else (false) the user is not authenticated => send error
-    
-    res.status(401).send('Wrong credentials');
+    // redirect to /urls
+    res.redirect('/urls') // hey browser, can you do another request => get /urls
     return;
+  }
+  // else (false) the user is not authenticated => send error
+
+  res.status(401).send('Wrong credentials');
+  return;
 });
 
 
 app.get('/logout', (req, res) => {
 
-  const templateVars = {user: null};
+  const templateVars = { user: null };
   res.render('url_login', templateVars)
 
 });
@@ -206,18 +233,25 @@ app.get("/urls/:shortURL", (req, res) => {
   const userId = req.session.user_id;
   const loggedInUser = usersDb[userId];
   const shortURL = req.params.shortURL;
-  const templateVars = {    
-  shortURL, 
-  longURL: urlDatabase[shortURL]["longURL"],
-  user: loggedInUser,
-  urls: urlDatabase,
-  };
 
-  if (templateVars.user) {
-    res.render("url_show", templateVars);
+  if (urlDatabase[shortURL] && urlDatabase[shortURL].userId === userId) {
+    const templateVars = {
+      shortURL,
+      longURL: urlDatabase[shortURL]["longURL"],
+      user: loggedInUser,
+      urls: urlDatabase,
+    }
+
+    if (templateVars.user) {
+      res.render("url_show", templateVars);
+    } else {
+      res.redirect("/login")
+    }
   } else {
-    res.redirect("/login")
+    res.status(401).send('Error: url does not exist for this user.');
   }
+
+
 
 });
 
@@ -226,7 +260,7 @@ app.post("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
 
   urlDatabase[shortURL]["longURL"] = longURL["longURL"];
-  console.log("ID between users?", urlDatabase)
+
   res.redirect("/urls");
 });
 
@@ -235,16 +269,43 @@ app.post("/urls/:shortURL", (req, res) => {
 
 app.get("/u/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
-  const longURL = urlDatabase[shortURL]["longURL"];
-  //NOTE: longURL must include https:// before url. google.com won't work, but https://google.com does
-  res.redirect(longURL)
+
+  if (urlDatabase[shortURL]) {
+    const templateVars = {
+      longURL: urlDatabase[shortURL]["longURL"],
+    };
+
+    res.redirect(templateVars.longURL)
+
+    
+  } else {
+    res.status(401).send('Error: url does not exist.');
+  }
+
+
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
-  // const templateVars = { shortURL: req.params.shortURL, longURL:req.params.longURL };
+
+  const userId = req.session.user_id;
+  const loggedInUser = usersDb[userId];
+
+  const templateVars = {
+    user: loggedInUser
+  };
+
+
   const urlToDelete = req.params.shortURL;
   delete urlDatabase[urlToDelete];
-  res.redirect("/urls");
+
+
+  if (templateVars.user) {
+    res.redirect("/urls");
+  } else {
+    res.status(401).send('You must be logged in');
+  }
+
+
 });
 
 
@@ -252,8 +313,8 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 
 // GET: asking as client to display a page
 app.get("/register", (req, res) => {
- 
-  const templateVars = {user: null}
+
+  const templateVars = { user: null }
   res.render("url_register", templateVars)
 });
 
@@ -269,7 +330,7 @@ app.post("/register", (req, res) => {
   // userFound can be user object or false:
   const userFound = findUserByEmail(email, usersDb);
 
-  if(userFound) {
+  if (userFound) {
     return res.status(401).send("Sorry, that user already exists!");
   };
 
