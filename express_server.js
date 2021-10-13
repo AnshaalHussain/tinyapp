@@ -12,7 +12,6 @@ app.use(cookieSession({
   name: 'session',
   keys: ['tehsecretkey'],
 }))
-//const findUserByEmail = require('./helpers')
 
 // objects serving as databases --->
 
@@ -20,12 +19,13 @@ const urlDatabase = {};
 
 const usersDb = {};
 
-//helper functions
+//helper functions -------->
 function generateRandomString() {
   var id = "id" + Math.random().toString(16).slice(2);
   return id;
 };
 
+// HELPER FUNCTION: will return urls belonging to the user_id that is given as an argument
 function urlsForUser(id) {
   const uniqueURLS = {};
   for (obj in urlDatabase) {
@@ -105,36 +105,7 @@ app.get("/urls", (req, res) => {
   }
 
 });
-/*
-app.post("/urls", (req, res) => {
 
-  const userId = req.session.user_id;
-  const loggedInUser = usersDb[userId];
-
-  //const longURL = req.body.longURL;
-  //const shortURL = generateRandomString();
-
-
-  //console.log("HELLO", longURL, shortURL);  // Log the POST request body to the console
-
-  const shortURL = req.params.shortURL;
-
-  if(urlDatabase[shortURL]) {
-    const templateVars = {    
-    shortURL,
-    longURL: urlDatabase[shortURL]["longURL"],
-    user: loggedInUser,
-    urls: urlDatabase,
-    };
-
-  //res.redirect(`/urls/${shortURL}`)
-  if (templateVars.user) {
-    res.render("url_show", templateVars);
-  } else {
-    res.redirect("/login")
-  }
-};
-*/
 app.get("/urls/new", (req, res) => {
   const userId = req.session.user_id;
   const loggedInUser = usersDb[userId];
@@ -157,7 +128,6 @@ app.post("/urls", (req, res) => {
   const shortURL = generateRandomString();
   const userId = req.session.user_id;
 
-  //console.log(req.body)
 
   urlDatabase[shortURL] = {
     longURL,
@@ -169,7 +139,6 @@ app.post("/urls", (req, res) => {
 });
 
 app.get('/login', (req, res) => {
-  //const templateVars = {user: null};
   const userId = req.session.user_id;
   const loggedInUser = usersDb[userId];
 
@@ -219,7 +188,7 @@ app.get('/logout', (req, res) => {
 });
 
 app.post("/logout", (req, res) => {
-  //res.clearCookie('user_id')
+  //res.clearCookie('user_id') is alternate way of clearing cookies
   req.session = null;
   res.redirect("/urls")
 });
@@ -228,7 +197,7 @@ app.post("/logout", (req, res) => {
 
 app.get("/urls/:shortURL", (req, res) => {
 
-  //const userId = req.cookies['user_id'];
+  //const userId = req.cookies['user_id']; is an alternate way of setting cookies
 
   const userId = req.session.user_id;
   const loggedInUser = usersDb[userId];
@@ -254,6 +223,8 @@ app.get("/urls/:shortURL", (req, res) => {
 
 
 });
+
+
 
 app.post("/urls/:shortURL", (req, res) => {
   const longURL = req.body;
