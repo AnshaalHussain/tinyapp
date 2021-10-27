@@ -124,16 +124,26 @@ app.get("/urls/new", (req, res) => {
 
 app.post("/urls", (req, res) => {
 
-  const longURL = req.body.longURL;
-  const shortURL = generateRandomString();
   const userId = req.session.user_id;
 
+  if (!userId) {
+    return res.status(400).send("User is not logged in.")
+  }
 
+  const longURL = req.body.longURL;
+  
+  if(!longURL) {
+    return res.status(400).send("Needed a longURL.")
+  }
+
+  const shortURL = generateRandomString();
+  
   urlDatabase[shortURL] = {
     longURL,
     userId
   }
 
+ 
   res.redirect("/urls")
 
 });
@@ -154,6 +164,10 @@ app.post('/login', (req, res) => {
   //extract email and pass from body of request => req.body
   const email = req.body.email;
   const password = req.body.password;
+
+  if(!email || !password) {
+    return res.status(401).send("Need to fill out email and password.")
+  }
 
   // retrieve the user from the db (using helper function)
   const userFound = findUserByEmail(email, usersDb);
@@ -227,10 +241,28 @@ app.get("/urls/:shortURL", (req, res) => {
 
 
 app.post("/urls/:shortURL", (req, res) => {
-  const longURL = req.body;
+
+
+  const userId = req.session.user_id;
+
+  if (!userId) {
+    return res.status(400).send("User is not logged in.")
+  }
+
+  const longURL = req.body.longURL;
+  
+  if(!longURL) {
+    return res.status(400).send("Needed a longURL.")
+  }
+  
   const shortURL = req.params.shortURL;
 
-  urlDatabase[shortURL]["longURL"] = longURL["longURL"];
+  if (urlDatabase[shortURL].userId !== userId) {
+    return res.status(400).send("Do not have permission for this action.")
+  }
+
+  urlDatabase[shortURL].longURL = longURL;
+
 
   res.redirect("/urls");
 });
@@ -296,7 +328,14 @@ app.post("/register", (req, res) => {
 
   const email = req.body.email;
   const password = req.body.password;
+
+
+  if(!email || !password) {
+    return res.status(401).send("Need to fill out email and password.")
+  }
+
   const hashedPassword = bcrypt.hashSync(password, 10);
+
 
   // userFound can be user object or false:
   const userFound = findUserByEmail(email, usersDb);
