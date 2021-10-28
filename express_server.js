@@ -101,7 +101,7 @@ app.get("/urls", (req, res) => {
   if (templateVars.user) {
     res.render('url_index', templateVars);
   } else {
-    res.redirect("/login")
+    return res.status(400).send("User is not logged in.")
   }
 
 });
